@@ -3,6 +3,7 @@
 import datetime
 import time
 import sys
+from optparse import OptionParser
 
 """By default display the number of days since the epoch
 If a date is given, convert that to an epoch
@@ -34,12 +35,43 @@ def date_to_epoch(datestr):
 			break
 	return int(time.mktime(epochtime)/86400)
 
-if sys.argv[1:]:
-	for epoch in sys.argv[1:]:
+def print_epoch(epoch,pretty,options):
+	if options.number:
+		print epoch
+	elif options.pretty:
+		print pretty
+	else:
+		print "%s (%s)" % (epoch,pretty)
+
+# parse the options
+usage = """usage: %prog [options] [epoch epoch2 epoch3 ...]
+with no arguments, print the number of days since the epoch
+give multiple epochs and dates to calculate multiple epochs
+acceptable date formats
+YYYY-MM-DD MM/DD/YYYY"""
+
+parser = OptionParser(usage=usage,version="%prog 0.1")
+parser.add_option("-n", "--number", dest="number", help="Only print number", action="store_true")
+parser.add_option("-p", "--pretty", dest="pretty", help="Only print pretty", action="store_true")
+(options,args) = parser.parse_args()
+
+if options.number and options.pretty:
+				parser.error("--number and --pretty are mutually exclusive")
+
+if args:
+	for arg in args:
 		try:
-			print "%s\t => %s" % (epoch,epoch_to_date(float(epoch)))
+			pretty = epoch_to_date(float(arg))
+			epoch = arg
 		except:
-			print "%s\t => %s" % (epoch,date_to_epoch(epoch))
+			try:
+				epoch = date_to_epoch(arg)
+				pretty = arg
+			except:
+				print "Error: couldn't convert %s" % arg
+				continue
+		print_epoch(epoch,pretty,options)
 else:
-	epoch = (time.time()/86400)
-	print "%s\t => %s" % (int(epoch),epoch_to_date(epoch))
+	epoch = int(time.time()/86400)
+	pretty = epoch_to_date(epoch)
+	print_epoch(epoch,pretty,options)
