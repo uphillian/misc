@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+import datetime
+import time
+import sys
+
+"""By default display the number of days since the epoch
+If a date is given, convert that to an epoch
+If a number is given, convert that to a date"""
+
+def epoch_to_date(epoch):
+	"""Take an epoch and return a string of the date"""
+	if epoch == None:
+		epoch = (time.time()/86400)
+	date = time.gmtime(float(epoch)*86400)
+	pretty = datetime.date(date[0],date[1],date[2]).strftime("%b %d, %Y")
+	return pretty
+
+def try_dateconvert(datestr,datefmt):
+	try:
+		return time.strptime(datestr,datefmt)
+	except:
+		return -1
+
+def date_to_epoch(datestr):
+	"""Take a date string and return the epoch"""
+	formats = list()
+	formats.append('%m/%d/%Y')
+	formats.append('%Y-%m-%d')
+	formats.append('%m/%d/%Y %H:%M')
+	for fmt in formats:
+		epochtime = try_dateconvert(datestr,fmt)
+		if epochtime != -1:
+			break
+	return int(time.mktime(epochtime)/86400)
+
+if sys.argv[1:]:
+	for epoch in sys.argv[1:]:
+		try:
+			print "%s\t => %s" % (epoch,epoch_to_date(float(epoch)))
+		except:
+			print "%s\t => %s" % (epoch,date_to_epoch(epoch))
+else:
+	epoch = (time.time()/86400)
+	print "%s\t => %s" % (int(epoch),epoch_to_date(epoch))
