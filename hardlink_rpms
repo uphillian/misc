@@ -1,0 +1,117 @@
+#!/usr/bin/python
+
+import sys
+import os
+from optparse import OptionParser
+import hashlib
+
+"""
+Compare the rpms in the given directories, if they are the same by chksum, hardlink them
+build up a hash of seen rpms and chksum's, compare and link if equal.
+extra credit - when not equal store the new hash and location into a new entry.
+"""
+global hashSums
+global options
+global count
+global space
+hashSums = {}
+count = 0
+space = 0
+
+
+def human_size(size,precision=2):
+  suffixes=['B','KB','MB','GB','TB']
+  suffixIndex = 0
+  while size > 1024:
+    suffixIndex += 1
+    size = size/1024.0
+  return "%.*f%s" % (precision,size,suffixes[suffixIndex])
+
+def chksum_file(path):
+  """compute chksum for file, insert into hash"""
+  global options
+  if options.debug: 
+	print(" -> computing chksum for %s" % path)
+  try:
+    hash = hashlib.sha1(open(path).read()) 
+  except:
+    print "Error: problem hashing %s" % path
+    return -1
+  return hash.hexdigest()
+
+def find_file(filename,path,chksumX):
+  """look for file in hash, return chksum,path tuple"""
+  global options
+  global hashSums
+
+  try:
+	(pathY,chksumY) = hashSums[filename]
+	if options.debug: 
+		print( " -> found %s at %s" % (filename,pathY))
+	return (pathY,chksumY)
+  except:
+	hashSums[filename] = (path,chksumX)
+	if options.debug: 
+		print(" -> storing %s in hashSums" % filename)
+	return (-1,-1)
+
+def walk_dir(path):
+  """look for all rpms in a path, check if they can be hardlinked along the way"""
+  for root,dirs,files in os.walk(path):
+	for dir in dirs:
+		walk_dir(dir)
+	for file in files:
+		# file should be rpm
+		if file[len(file)-4:] == '.rpm':
+			check_file(file,root)
+
+def hardlink(filename,path1,path2):
+  """hard link path2 to path1, remove path2 first, then hardlink"""
+  global options
+  global count
+  global space
+  if options.debug: 
+    print "linking %s in %s to %s" % (filename,path1,path2)
+  path1 = "%s/%s" % (path1,filename)
+  path2 = "%s/%s" % (path2,filename)
+  try:
+    inodeX = os.stat(path1).st_ino
+    inodeY = os.stat(path2).st_ino
+  except:
+    print "Error: problem getting inode for %s or %s" % (path1,path2)
+    return -1
+  if inodeX != inodeY:
+    try:
+      os.unlink(path2)
+      os.link(path1,path2)
+      count = count + 1
+      space = space + os.stat(path2).st_size
+    except:
+      print "Error: could not link %s to %s" % (path1,path2)
+      return -1
+  return 0
+	
+
+
+def check_file(filename,path):
+  """get chksum for the file, look for it in hash, hardlink if appropriate"""
+  chksumX = chksum_file("%s/%s" % (path,filename))
+  (pathY,chksumY) = find_file(filename,path,chksumX)
+  if chksumX == chksumY:
+	hardlink(filename,path,pathY)
+
+if __name__ == "__main__":
+  usage = """usage: %prog [options] path [path2 path3 ...]\nwalk through path looking for rpms that can be hardlinked to one another"""
+  parser = OptionParser(usage=usage)
+  parser.add_option('-v','--verbose',dest='verbose',help='verbose output',action='store_true')
+  parser.add_option('-d','--debug',dest='debug',help='debugging output',action='store_true')
+  (options,args) = parser.parse_args()
+  
+  if not args:
+    parser.error('at least one path must be given')
+  if options.verbose: print "hardlinking rpms in ",
+  for path in args:
+    if options.verbose: print path +" ",
+    walk_dir(path)
+  if options.verbose:
+    print "done.\nlinked %s rpms saving %s." % (count,human_size(space))
