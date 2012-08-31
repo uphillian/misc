@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+# crypt a password in a format suitable for /etc/shadow (sha512)
+
+import crypt,getpass
+import random
+from optparse import OptionParser
+
+def gensalt(length=8):
+	ALPHA = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	salt=[]
+	for i in range(length):
+		salt.append(random.choice(ALPHA))
+	return "".join(salt)
+
+# 6 is sha512
+def shadowcrypt(password,saltlen=8,hashalgo=6,salt=None):
+	if salt == None:
+		salt = gensalt(saltlen)
+  	return crypt.crypt('secret','$%s$%s$' % (hashalgo,salt))
+
+if __name__ == "__main__":
+	# get arguments, return crypt
+	usage = """usage: %prog [options] [password password2 password3 ...]
+when called with no password, prompt for a password.  return a salted hash
+of the password, suitable for placing into /etc/shadow"""
+
+	parser = OptionParser(usage=usage,version='%prog 0.1')
+	parser.add_option("-c", "--crypt", dest="crypt", help="Hash algorithm to use.\nacceptable options sha512")
+	parser.add_option("-l", "--length", dest="saltlen", help="salt length [default 8]")
+	parser.add_option("-s", "--salt", dest="salt", help="salt")
+
+	(options,args) = parser.parse_args()
+
+	if options.crypt:
+		try:
+			hashalgo = {
+				'crypt':	None,
+				'md5': 		1,
+				'sha256':	5,
+				'sha512':	6,
+			}[options.crypt]
+		except:
+			hashalgo = 6
+	else:
+		hashalgo = 6
+	if options.saltlen:
+		saltlen = options.saltlen
+	else:
+		saltlen = 8
+	if options.salt:
+		salt = options.salt
+	else:
+		salt = None
+	if args:
+		for password in args:
+			print "%s: %s" % (password,shadowcrypt(password,saltlen,hashalgo,salt))
+	else:
+		password = getpass.getpass()
+		print shadowcrypt(password,saltlen,hashalgo,salt)
