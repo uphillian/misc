@@ -17,7 +17,7 @@ def gensalt(length=8):
 def shadowcrypt(password,saltlen=8,hashalgo=6,salt=None):
 	if salt == None:
 		salt = gensalt(saltlen)
-  	return crypt.crypt('secret','$%s$%s$' % (hashalgo,salt))
+  	return crypt.crypt(password,'$%s$%s$' % (hashalgo,salt))
 
 if __name__ == "__main__":
 	# get arguments, return crypt
