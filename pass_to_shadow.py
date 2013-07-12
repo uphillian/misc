@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# * Thu Jul 11 2013 Thomas Uphill <tuphill@costco.com> 
+# * Thu Jul 11 2013 Thomas Uphill 
 # - encrypt a password with sha512 by default
 # - generate a crypt suitable for placement in /etc/shadow
 
